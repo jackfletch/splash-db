@@ -1,4 +1,5 @@
 from .Franchise import Franchise
+from .LeagueAverageShootingPct import LeagueAverageShootingPct
 from .Player import Player
 from .PlayerSeason import PlayerSeason
 from .Roster import Roster

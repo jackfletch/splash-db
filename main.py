@@ -1,14 +1,14 @@
 import json
 from typing import Dict, List, Sequence, Tuple, Union
 
-from peewee import JOIN, Value
+from peewee import JOIN, SQL, NodeList, Value, fn
 
-from db import db, init_db
+from db import create_tables, db, drop_tables, init_db
 from db.insert import insert_player, insert_shots
-from db.schema import Player, Roster, Shot, Team
+from db.schema import LeagueAverageShootingPct, Player, Roster, Shot, Team
 from endpoints import commonallplayers, shotchartdetail
 from utils.fetch import fetch
-from utils.season import SeasonType, seasonyear
+from utils.season import SeasonType, season_id_to_game_date, seasonyear
 
 SEASON_ID_CURRENT = 2019
 SEASON_ID_FIRST_SHOTCHARTDETAIL = 1996
@@ -25,7 +25,7 @@ def get_season_abbr_to_franchise_id_map(season_id: int) -> Dict[str, int]:
 
 def get_abbr_to_franchise_id_map():
     totalmap = {}
-    for season in range(SEASON_ID_FIRST_SHOTCHARTDETAIL, SEASON_ID_CURRENT):
+    for season in range(SEASON_ID_FIRST_SHOTCHARTDETAIL, SEASON_ID_CURRENT + 1):
         tmap = get_season_abbr_to_franchise_id_map(season)
         totalmap.update(tmap)
 
@@ -193,8 +193,37 @@ def get_players_rosters():
         get_player_rosters(player.id)
 
 
+def insert_league_average_shooting_pcts(season_id: int, distance: int, pct: int):
+    LeagueAverageShootingPct(database=db).insert(
+        season_id=season_id, distance=distance, pct=pct,
+    ).on_conflict(action="IGNORE").execute()
+
+
+def update_league_average_shooting_pcts():
+    for season in range(SEASON_ID_FIRST_SHOTCHARTDETAIL, SEASON_ID_CURRENT + 1):
+        min_game_date, max_game_date = season_id_to_game_date(season)
+        shots = (
+            Shot.select(
+                Shot.distance,
+                (fn.COUNT("*").filter(Shot.made) * 1.0 / fn.COUNT("*")).alias("pct"),
+            )
+            .where(
+                Shot.distance <= 35,
+                Shot.game_date >= min_game_date,
+                Shot.game_date <= max_game_date,
+            )
+            .group_by(Shot.distance)
+            .namedtuples()
+        )
+        for shot in shots:
+            insert_league_average_shooting_pcts(
+                season_id=season, distance=shot.distance, pct=shot.pct
+            )
+
+
 if __name__ == "__main__":
     init_db()
+    update_league_average_shooting_pcts()
     # for i in range(SEASON_ID_CURRENT, SEASON_ID_FIRST_SHOTCHARTDETAIL - 1, -1):
     #     get_all_players(i)
     # get_players_rosters()
