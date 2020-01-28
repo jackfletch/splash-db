@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Dict, Union
+from typing import Dict, Tuple, Union
 
 
 class SeasonType(Enum):
@@ -20,6 +20,12 @@ SeasonTypeStringDict: Dict[int, str] = {
 def seasonyear(year: Union[int, str]) -> str:
     next_year = str(int(year) + 1)[-2:]
     return f"{year}-{next_year}"
+
+
+def season_id_to_game_date(season_id: int) -> Tuple[int, int]:
+    min_game_date = season_id * 10000 + 1000
+    max_game_date = (season_id + 1) * 10000 + 1000
+    return (min_game_date, max_game_date)
 
 
 if __name__ == "__main__":
