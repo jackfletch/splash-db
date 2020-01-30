@@ -12,3 +12,4 @@ class LeagueAverageShootingPct(BaseModel):
 
     class Meta:
         table_name = "league_average_shooting_pct"
+        indexes = ((("season_id", "distance"), True),)
